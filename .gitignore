@@ -1,5 +1,6 @@
 Brewfile.lock.json
 start-local
+ollama
 
 # Jetbrains files
 .idea

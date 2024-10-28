@@ -1,5 +1,4 @@
 install:
-	brew bundle
 	./scripts/install.sh
 
 clean:
