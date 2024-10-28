@@ -1,0 +1,7 @@
+Brewfile.lock.json
+start-local
+
+# Jetbrains files
+.idea
+*.iml
+
