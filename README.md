@@ -5,12 +5,13 @@ A brittle chaining together of household items to make a RAG app.
 
 ### Requirements
 - homebrew
+- python 3
 - Docker (running)
 
 ### Usage
 
 ```bash
-make install
+make run
 ```
 
 ### Cleanup

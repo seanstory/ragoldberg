@@ -1,6 +1,8 @@
 Brewfile.lock.json
 start-local
 ollama
+streamlit
+.venv
 
 # Jetbrains files
 .idea

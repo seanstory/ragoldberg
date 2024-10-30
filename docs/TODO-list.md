@@ -1,6 +1,6 @@
 ### TODO list
 - [ ] install ELSER?
-- [ ] index definitions?
+- [ ] index check on startup
 - [ ] pipeline definitions?
 - [ ] connector?
 - [ ] vault integration?

@@ -4,7 +4,7 @@ set -e
 SCRIPT_DIR=$(dirname $0)
 ROOT_DIR="${SCRIPT_DIR}/../"
 source "${SCRIPT_DIR}/functions.sh"
-source "${ROOT_DIR}.env"
+export $(cat "${ROOT_DIR}/.env" | xargs)
 
 function install_brew(){
   if  brew --help > /dev/null 2>&1; then
@@ -39,31 +39,16 @@ function install_stack(){
   fi
 }
 
-function start_ollama(){
-  if  ollama --help > /dev/null 2>&1; then
-    green_echo_date "Starting ollama"
-  else
-    red_echo_date "ollama not found. Did brew fail to install it?"
-    exit 1
-  fi
-  OLLAMA_DIR="${ROOT_DIR}ollama"
-  mkdir -p $OLLAMA_DIR
-  if test -e "${OLLAMA_DIR}/serve.pid"; then
-    yellow_echo_date "ollama already running"
-  else
-    ollama serve &> "${OLLAMA_DIR}/serve.log" & OLLAMA_SERVE_PID=$!
-    green_echo_date "Ollama server started with PID: ${OLLAMA_SERVE_PID}"
-    echo $OLLAMA_SERVE_PID > "${OLLAMA_DIR}/serve.pid"
-    green_echo_date "Waiting for ollama server to be ready..."
-    until ollama -v > /dev/null 2>&1; do
-      sleep 1
-    done
-  fi
-  green_echo_date "Installing LLM (${MODEL})"
-  ollama pull $MODEL
+
+
+function install_streamlit_app() {
+  python3 -m venv .venv
+  .venv/bin/pip install --upgrade pip
+  .venv/bin/pip install --upgrade setuptools
+  .venv/bin/pip install -r requirements.txt
 }
 
 install_brew
 check_docker
 install_stack
-start_ollama
+install_streamlit_app

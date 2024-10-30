@@ -11,26 +11,29 @@ function remove_stack() {
   NESTED_START_LOCAL_DIR="${START_LOCAL_DIR}elastic-start-local/"
   if test -e ${START_LOCAL_DIR}; then
     green_echo_date "Removing start-local"
+    set +e
     if test -e ${NESTED_START_LOCAL_DIR}; then
       yes | ./${START_LOCAL_DIR}elastic-start-local/uninstall.sh
     fi
-    rm -rf START_LOCAL_DIR
+    set -e
+    rm -rf $START_LOCAL_DIR
   fi
 }
 
 function remove_ollama() {
   OLLAMA_DIR="${ROOT_DIR}ollama"
   if test -e $OLLAMA_DIR; then
-    set +e
-    green_echo_date "Stopping ollama server"
-    OLLAMA_PID=`cat "$OLLAMA_DIR/serve.pid"`
-    kill $OLLAMA_PID
-    set -e
     green_echo_date "Removing ollama"
     rm -rf $OLLAMA_DIR
   fi
 }
 
+function clean_python_env() {
+  green_echo_date "Removing python virtual environment"
+  rm -rf .venv
+}
+
 remove_stack
 remove_ollama
+clean_python_env
 
