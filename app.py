@@ -1,13 +1,11 @@
 # NOTE: this app has been designed as a demo, NOT a template for production.
 # There are more complete reference apps at the Elastic Search-Labs repo: https://github.com/elastic/elasticsearch-labs
 import datetime
-import uuid
 from datetime import timezone, datetime
 import streamlit as st
 from elasticsearch import Elasticsearch
+import json
 import os
-import math
-import tiktoken
 import pandas as pd
 from langchain_community.llms import Ollama
 
@@ -19,49 +17,73 @@ import time
 from PIL import Image
 # connection to Elasticsearch and define the specific parameters used in the app
 es = Elasticsearch("http://localhost:9200", basic_auth=("elastic", os.environ['ES_LOCAL_PASSWORD']))
-report_index = 'search-reports'
-report_pipeline = 'ml-inference-search-reports'
+
+kb_index_prefix = 'search-rag'
+kb_alias = kb_index_prefix
+kb_index_pattern = f'${kb_index_prefix}-*'
+kb_index_template_name = 'ragoldberg-v1'
+
+
 transformer_model = '.elser_model_2_linux-x86_64'
-logging_index = 'llm_interactions'
-logging_pipeline = 'ml-inference-llm_logging'
+inference_id = 'elser-endpoint'
 
 BASE_URL = "http://localhost:11434"
 
+def read_json_file(file_path):
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+    return data
+
+
+rag_index_template = read_json_file(f'resources/search-rag-index-template.json')
+
+def check_indices():
+    task_report = []
+    index_template_exists = es.indices.exists_index_template(name=kb_index_template_name)
+    if not index_template_exists:
+        template_result = es.indices.put_template(name=kb_index_template_name, body=rag_index_template)
+        task_report.append(template_result)
+    elif index_template_exists:
+        task_report.append("Index template exists already")
+
+    test_index_name = f"{kb_index_prefix}-test"
+    test_index_exists = es.indices.exists(index=test_index_name)
+    if not test_index_exists:
+        es.indices.create(index=test_index_name)  # so that the alias isn't empty
+
+    return task_report
 
 def init_chat_model():
     llm = Ollama(model=os.environ['MODEL'])
     return llm
 
 # perform a semantic and bm25 keyword search on a specific report
-def report_search(index, question, report_name):
-    model_id = transformer_model
+def kb_search(question):
     query = {
         "bool": {
             "should": [
                 {
-                    "text_expansion": {
-                        "ml.inference.text_expanded.predicted_value": {
-                            "model_id": model_id,
-                            "model_text": question
-                        }
+                    "semantic": {
+                        "field": "embeddings",
+                        "query": question
                     }
                 },
                 {
                     "match": {
                         "text": question
                     }
+                },
+                {
+                    "match": {
+                        "title": question
+                    }
                 }
-            ],
-            "filter": {
-                "term": {
-                    "report_name.keyword": report_name
-                }
-            }
+            ]
         }
     }
 
-    field_list = ['page', 'text', '_score']
-    results = es.search(index=index, query=query, size=100, fields=field_list, min_score=5)
+    field_list = ['title', 'text', '_score']
+    results = es.search(index=kb_alias, query=query, size=100, fields=field_list, min_score=5)
     response_data = [{"_score": hit["_score"], **hit["_source"]} for hit in results["hits"]["hits"]]
     documents = []
     # Check if there are hits
@@ -75,32 +97,6 @@ def report_search(index, question, report_name):
     return documents
 
 
-# aggregate the names of all reports stored in the index
-def get_reports(index):
-    aggregation_query = {
-        "size": 0,
-        "query": {
-            "match_all": {
-            }
-        },
-        "aggs": {
-            "reports": {
-                "terms": {
-                    "field": "report_name.keyword",
-                    "size": 1000
-                }
-            }
-        }
-    }
-    reports = es.search(index=index, body=aggregation_query)
-    buckets = reports['aggregations']['reports']['buckets']
-    report_list = []
-    for bucket in buckets:
-        key = bucket['key']
-        report_list.append(key)
-    return report_list
-
-
 def construct_prompt(question, results):
     for record in results:
         if "_score" in record:
@@ -110,113 +106,50 @@ def construct_prompt(question, results):
         result += f"Page: {item['page']} , Text: {item['text']}\n"
 
     # interact with the LLM
-    augmented_prompt = f"""Using only the context below, answer the query.
+    # augmented_prompt = f"""Using the context below, answer the query. If the answer isn't present in the context, it's ok to say, "I don't know".
+    # Context: {result}
+    # Query: {question}"""
+    # messages = [
+    #     SystemMessage(
+    #         content="You are a helpful analyst that answers questions based on the context provided. "
+    #                 "When you respond, please cite your source where possible, and always summarise your answers."),
+    #     HumanMessage(content=augmented_prompt)
+    # ]
+    # return messages
+    augmented_prompt = f"""
+    You are a helpful analyst that answers questions based on the context provided.
+    When you respond, please cite your source where possible, and always summarise your answers.
+    Using the context below, answer the query. If the answer isn't present in the context, it's ok to say, "I don't know".
     Context: {result}
     Query: {question}"""
-    messages = [
-        SystemMessage(
-            content="You are a helpful analyst that answers questions based only on the context provided. "
-                    "When you respond, please cite your source and where possible, always summarise your answers."),
-        HumanMessage(content=augmented_prompt)
-    ]
-    return messages
 
-
-def check_qa_log(question, report_name):
-    model_id = transformer_model
-    query = {
-        "bool": {
-            "should": [
-                {
-                    "text_expansion": {
-                        "ml.inference.question_expanded.predicted_value": {
-                            "model_id": model_id,
-                            "model_text": question
-                        }
-                    }
-                },
-                {
-                    "match": {
-                        "question": question
-                    }
-                }
-            ],
-            "must": [{
-                "term": {
-                    "report_name.keyword": report_name
-                },
-                "term": {
-                    "answer_type.keyword": "original"
-                }
-            }]
-        }
-    }
-    results = es.search(index=logging_index, query=query, size=1, min_score=20)
-    if results['hits']['total']['value'] > 0:
-        answer_value = results['hits']['hits'][0]['_source']['answer']
-    else:
-        answer_value = 0
-    return answer_value
-
-def common_questions(report_name):
-    aggregation_query = {
-        "size": 0,
-        "query": {
-            "term": {
-                "report_name": report_name
-            }
-        },
-        "aggs": {
-            "questions": {
-                "terms": {
-                    "field": "question.keyword",
-                    "size": 10
-                }
-            }
-        }
-    }
-    questions = es.search(index=logging_index, body=aggregation_query)
-    buckets = questions['aggregations']['questions']['buckets']
-    question_list = []
-    for bucket in buckets:
-        key = bucket['key']
-        question_list.append(key)
-    return question_list
+    return augmented_prompt
 
 
 # search form
 image = Image.open('images/logo_1.png')
 st.image(image, width=150)
 st.title("RAGoldberg")
-st.header("Search a report")
-report_source = st.selectbox("Choose your annual report", get_reports(report_index))
+st.header("Search your internal knowledge")
+check_indices()
 question = st.text_input("Question", placeholder="What would you like to know?")
 submitted = st.button("search")
-if report_source:
-    question_list = common_questions(report_source)
-    if len(question_list):
-        with st.expander("Common questions"):
-            for i in question_list:
-                st.markdown(f"{i}")
 
 if submitted:
     chat_model = init_chat_model()
-    existing_answer = check_qa_log(question, report_source)
-    results = report_search(report_index, question, report_source)
-    df_results = pd.DataFrame(results)
+    search_results = kb_search(question)
+    df_results = pd.DataFrame(search_results)
     with st.status("Searching the data...") as status:
-        status.update(label=f'Retrieved {len(results)} results from Elasticsearch', state="running")
-    with st.chat_message("ai assistant", avatar="🤖"):
+        status.update(label=f'Retrieved {len(search_results)} results from Elasticsearch', state="running")
+    with st.chat_message("ai assistant", avatar='🤖'):
         full_response = ""
         message_placeholder = st.empty()
         sent_time = datetime.now(tz=timezone.utc)
-        prompt = construct_prompt(question, results)
-        if existing_answer == 0:
-            current_chat_message = chat_model(prompt).content
-            answer_type = 'original'
-        else:
-            current_chat_message = existing_answer
-            answer_type = 'existing'
+        prompt = construct_prompt(question, search_results)
+        # current_chat_message = chat_model(prompt).content
+        current_chat_message = chat_model(prompt)
+        answer_type = 'original'
+
         for chunk in current_chat_message.split():
             full_response += chunk + " "
             time.sleep(0.05)

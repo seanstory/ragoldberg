@@ -3,5 +3,3 @@ elasticsearch
 langchain
 langchain-elasticsearch
 langchain-community
-tiktoken
-PyPDF2

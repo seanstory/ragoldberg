@@ -35,8 +35,16 @@ function install_stack(){
     cd $START_LOCAL_DIR
     green_echo_date "Installing Elasticsearch and Kibana"
     curl -fsSL https://elastic.co/start-local | sh
+    export $(cat "elastic-start-local/.env" | xargs)
     cd -
   fi
+}
+
+function install_elser() {
+  green_echo_date "installing ELSER..."
+  curl -XPUT -u elastic:${ES_LOCAL_PASSWORD} "${ES_LOCAL_URL}/_inference/sparse_embedding/elser-endpoint" \
+    -d "@${ROOT_DIR}/resources/elser_endpoint.json"
+  green_echo_date "ELSER installed"
 }
 
 
@@ -51,4 +59,5 @@ function install_streamlit_app() {
 install_brew
 check_docker
 install_stack
+install_elser
 install_streamlit_app

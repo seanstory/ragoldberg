@@ -1,6 +1,8 @@
 ### TODO list
-- [ ] install ELSER?
-- [ ] index check on startup
 - [ ] pipeline definitions?
 - [ ] connector?
 - [ ] vault integration?
+- [ ] add linting
+- [ ] add logging
+- [ ] fix avatar icon
+- [ ] get search-on-return working
