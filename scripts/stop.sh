@@ -16,6 +16,20 @@ function stop_stack() {
   fi
 }
 
+function stop_crawler() {
+    CRAWLER_DIR="${ROOT_DIR}crawler"
+    if test -e $CRAWLER_DIR; then
+      green_echo_date "Stopping crawler"
+      set +e
+      docker stop crawler
+      CRAWLER_LOG_PID=`cat "${CRAWLER_DIR}/crawler_log.pid"`
+      kill $CRAWLER_LOG_PID
+      set -e
+    else
+      yellow_echo_date "crawler doesn't seem to be running"
+    fi
+}
+
 function stop_ollama() {
   OLLAMA_DIR="${ROOT_DIR}ollama"
   if test -e $OLLAMA_DIR; then
@@ -38,6 +52,7 @@ function stop_streamlit_app() {
   fi
 }
 
+stop_crawler
 stop_stack
 stop_ollama
 stop_streamlit_app

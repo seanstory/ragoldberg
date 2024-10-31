@@ -47,6 +47,12 @@ function install_elser() {
   green_echo_date "ELSER installed"
 }
 
+function install_crawler() {
+  green_echo_date "fetching crawler image..."
+  docker pull docker.elastic.co/integrations/crawler:${CRAWLER_VERSION}
+  mkdir -p "${ROOT_DIR}crawler"
+}
+
 
 
 function install_streamlit_app() {
@@ -60,4 +66,5 @@ install_brew
 check_docker
 install_stack
 install_elser
+install_crawler
 install_streamlit_app

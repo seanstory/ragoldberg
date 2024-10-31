@@ -47,6 +47,15 @@ function start_ollama(){
   ollama pull $MODEL
 }
 
+function start_crawler() {
+    docker run -i -d \
+      --name crawler \
+      docker.elastic.co/integrations/crawler:0.2.0
+    CRAWLER_DIR="${ROOT_DIR}crawler"
+    docker logs -f crawler &> "${CRAWLER_DIR}/crawler.log" & DOCKER_LOGS_PID=$!
+    echo ${DOCKER_LOGS_PID} > "${CRAWLER_DIR}/crawler_log.pid"
+}
+
 function run_streamlit_app() {
   STREAMLIT_DIR="${ROOT_DIR}streamlit"
   mkdir -p $STREAMLIT_DIR
@@ -56,5 +65,6 @@ function run_streamlit_app() {
 }
 
 start_stack
+start_crawler
 start_ollama
 run_streamlit_app

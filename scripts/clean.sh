@@ -33,6 +33,15 @@ function clean_python_env() {
   rm -rf .venv
 }
 
+function clean_crawler() {
+  CRAWLER_DIR="${ROOT_DIR}crawler"
+  set +e
+  docker rm crawler
+  set -e
+  rm -rf $CRAWLER_DIR
+}
+
+clean_crawler
 remove_stack
 remove_ollama
 clean_python_env

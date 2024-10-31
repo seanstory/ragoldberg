@@ -41,7 +41,7 @@ def check_indices():
     task_report = []
     index_template_exists = es.indices.exists_index_template(name=kb_index_template_name)
     if not index_template_exists:
-        template_result = es.indices.put_template(name=kb_index_template_name, body=rag_index_template)
+        template_result = es.indices.put_index_template(name=kb_index_template_name, body=rag_index_template)
         task_report.append(template_result)
     elif index_template_exists:
         task_report.append("Index template exists already")

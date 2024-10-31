@@ -1,6 +1,7 @@
 Brewfile.lock.json
 start-local
 ollama
+crawler
 streamlit
 .venv
 
