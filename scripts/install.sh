@@ -66,15 +66,25 @@ function install_elser() {
   set +x
 }
 
-function setup_index_template() {
+function setup_es_resources() {
   green_echo_date "Creating an index template to match search-rag-*"
-    curl -XPUT --fail-with-body -u elastic:${ES_LOCAL_PASSWORD} \
-     -H "Content-Type: application/json" \
-     "${ES_LOCAL_URL}/_index_template/ragoldberg-v1" \
-      -d "@${ROOT_DIR}/resources/search-rag-index-template.json"
-    green_echo_date "index template installed"
-    curl -XPUT -u elastic:${ES_LOCAL_PASSWORD} \
-         "${ES_LOCAL_URL}/search-rag-test"
+  curl -XPUT --fail-with-body -u elastic:${ES_LOCAL_PASSWORD} \
+    -H "Content-Type: application/json" \
+    "${ES_LOCAL_URL}/_index_template/ragoldberg-v1" \
+    -d "@${ROOT_DIR}/resources/search-rag-index-template.json"
+  green_echo_date "index template installed"
+
+  green_echo_date "creating empty index to instantiate alias"
+  curl -XPUT -u elastic:${ES_LOCAL_PASSWORD} \
+       "${ES_LOCAL_URL}/search-rag-test"
+
+  green_echo_date "creating crawler pipeline"
+  curl -XPUT elastic:${ES_LOCAL_PASSWORD} \
+    -H "Content-Type: application/json" \
+    "${ES_LOCAL_URL}/_ingest/pipeline/crawler-pipeline" \
+    -d "@${ROOT_DIR}/resources/crawler-pipeline.json"
+
+
 }
 
 function install_crawler() {
@@ -90,6 +100,7 @@ elasticsearch:
   port: ${ES_LOCAL_PORT}
   username: elastic
   password: ${ES_LOCAL_PASSWORD}
+  pipeline: crawler-pipeline
 " > $CRAWLER_ES_CONFIG
 }
 
@@ -106,7 +117,7 @@ install_brew
 check_docker
 install_stack
 install_elser
-setup_index_template
+setup_es_resources
 install_crawler
 install_streamlit_app
 green_echo_date "Finished installing"
