@@ -9,10 +9,6 @@ import os
 import pandas as pd
 from langchain_community.llms import Ollama
 
-from langchain.schema import (
-    SystemMessage,
-    HumanMessage,
-)
 import time
 from PIL import Image
 # connection to Elasticsearch and define the specific parameters used in the app
@@ -111,20 +107,20 @@ def construct_prompt(question, results):
 
 
 # search form
-image = Image.open('images/logo_1.png')
-st.image(image, width=150)
+image = Image.open('images/RAGolberg_banner.png')
+st.image(image)
 st.title("RAGoldberg")
 st.header("Search your internal knowledge")
 question = st.text_input("Question", placeholder="What would you like to know?")
 submitted = st.button("search")
 
-if submitted:
+if submitted or question:
     chat_model = init_chat_model()
     search_results = kb_search(question)
     df_results = pd.DataFrame(search_results)
     with st.status("Searching the data...") as status:
         status.update(label=f'Retrieved {len(search_results)} results from Elasticsearch', state="running")
-    with st.chat_message("ai assistant", avatar='🤖'):
+    with st.chat_message("ai assistant", avatar='https://raw.githubusercontent.com/seanstory/ragoldberg/main/images/RAGoldberg_ico.png'):
         full_response = ""
         message_placeholder = st.empty()
         sent_time = datetime.now(tz=timezone.utc)
@@ -145,3 +141,4 @@ if submitted:
     # st.write(construct_prompt(question, results))
     string_prompt = str(prompt)
     st.dataframe(df_results)
+    question = None # this lets a newly typed/entered question trigger the flow
