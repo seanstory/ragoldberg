@@ -1,0 +1,38 @@
+domains:
+  - url: https://www.elastic.co         # The base URL for this domain
+    seed_urls:                         # The entry point(s) for crawl jobs
+      - https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html
+      - https://www.elastic.co/guide/en/enterprise-search/current/index.html
+      - https://www.elastic.co/guide/en/workplace-search/current/index.html
+      - https://www.elastic.co/guide/en/app-search/current/index.html
+      - https://www.elastic.co/docs/current/search-ui/overview
+
+    crawl_rules:
+      - policy: allow
+        type: begins
+        pattern: "/guide/en/elasticsearch"
+      - policy: allow
+        type: begins
+        pattern: "/guide/en/enterprise-search"
+      - policy: allow
+        type: begins
+        pattern: "/guide/en/workplace-search"
+      - policy: allow
+        type: begins
+        pattern: "/guide/en/app-search"
+      - policy: allow
+        type: begins
+        pattern: "/docs/current/search-ui/"
+      - policy: deny
+        type: regex
+        pattern: ".*"     # deny all as the last result
+
+output_sink: elasticsearch
+output_index: search-rag-elastic-docs
+
+max_crawl_depth: 10
+max_indexed_links_count: 100
+
+
+binary_content_extraction_enabled: false
+

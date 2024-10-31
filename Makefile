@@ -13,5 +13,8 @@ ingest:
 stop:
 	./scripts/stop.sh
 
+restart: stop start
+
+
 clean: stop
 	./scripts/clean.sh

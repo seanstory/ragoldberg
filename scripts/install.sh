@@ -79,7 +79,7 @@ function setup_es_resources() {
        "${ES_LOCAL_URL}/search-rag-test"
 
   green_echo_date "creating crawler pipeline"
-  curl -XPUT elastic:${ES_LOCAL_PASSWORD} \
+  curl -XPUT -u elastic:${ES_LOCAL_PASSWORD} \
     -H "Content-Type: application/json" \
     "${ES_LOCAL_URL}/_ingest/pipeline/crawler-pipeline" \
     -d "@${ROOT_DIR}/resources/crawler-pipeline.json"
@@ -101,6 +101,8 @@ elasticsearch:
   username: elastic
   password: ${ES_LOCAL_PASSWORD}
   pipeline: crawler-pipeline
+  bulk_api:
+    max_items: 1
 " > $CRAWLER_ES_CONFIG
 }
 

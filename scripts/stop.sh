@@ -22,6 +22,7 @@ function stop_crawler() {
       green_echo_date "Stopping crawler"
       set +e
       docker stop crawler
+      docker rm crawler
       CRAWLER_LOG_PID=`cat "${CRAWLER_DIR}/crawler_log.pid"`
       kill $CRAWLER_LOG_PID
       set -e
