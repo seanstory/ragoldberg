@@ -37,22 +37,6 @@ def read_json_file(file_path):
 
 rag_index_template = read_json_file(f'resources/search-rag-index-template.json')
 
-def check_indices():
-    task_report = []
-    index_template_exists = es.indices.exists_index_template(name=kb_index_template_name)
-    if not index_template_exists:
-        template_result = es.indices.put_index_template(name=kb_index_template_name, body=rag_index_template)
-        task_report.append(template_result)
-    elif index_template_exists:
-        task_report.append("Index template exists already")
-
-    test_index_name = f"{kb_index_prefix}-test"
-    test_index_exists = es.indices.exists(index=test_index_name)
-    if not test_index_exists:
-        es.indices.create(index=test_index_name)  # so that the alias isn't empty
-
-    return task_report
-
 def init_chat_model():
     llm = Ollama(model=os.environ['MODEL'])
     return llm
@@ -83,7 +67,7 @@ def kb_search(question):
     }
 
     field_list = ['title', 'text', '_score']
-    results = es.search(index=kb_alias, query=query, size=100, fields=field_list, min_score=5)
+    results = es.search(index=kb_alias, query=query, size=100, fields=field_list, min_score=0)
     response_data = [{"_score": hit["_score"], **hit["_source"]} for hit in results["hits"]["hits"]]
     documents = []
     # Check if there are hits
@@ -103,7 +87,7 @@ def construct_prompt(question, results):
             del record["_score"]
     result = ""
     for item in results:
-        result += f"Page: {item['page']} , Text: {item['text']}\n"
+        result += f"Title: {item.get('title')} , Text: {item.get('text')}\n"
 
     # interact with the LLM
     # augmented_prompt = f"""Using the context below, answer the query. If the answer isn't present in the context, it's ok to say, "I don't know".
@@ -131,7 +115,6 @@ image = Image.open('images/logo_1.png')
 st.image(image, width=150)
 st.title("RAGoldberg")
 st.header("Search your internal knowledge")
-check_indices()
 question = st.text_input("Question", placeholder="What would you like to know?")
 submitted = st.button("search")
 

@@ -35,22 +35,62 @@ function install_stack(){
     cd $START_LOCAL_DIR
     green_echo_date "Installing Elasticsearch and Kibana"
     curl -fsSL https://elastic.co/start-local | sh
-    export $(cat "elastic-start-local/.env" | xargs)
     cd -
   fi
+  export $(cat "${START_LOCAL_DIR}/elastic-start-local/.env" | xargs)
+  set -x
+  curl -XGET --fail-with-body -u elastic:${ES_LOCAL_PASSWORD} "${ES_LOCAL_URL}"
 }
 
 function install_elser() {
   green_echo_date "installing ELSER..."
-  curl -XPUT -u elastic:${ES_LOCAL_PASSWORD} "${ES_LOCAL_URL}/_inference/sparse_embedding/elser-endpoint" \
-    -d "@${ROOT_DIR}/resources/elser_endpoint.json"
-  green_echo_date "ELSER installed"
+  MAX_RETRIES=3
+  n=0
+  until [ "$n" -ge $MAX_RETRIES ]
+  do
+    set -x
+    set +e
+    curl -XPUT --fail-with-body -u elastic:${ES_LOCAL_PASSWORD} \
+      -H "Content-Type: application/json" \
+      "${ES_LOCAL_URL}/_inference/sparse_embedding/elser-endpoint" \
+       -d "@${ROOT_DIR}/resources/elser_endpoint.json" && green_echo_date "ELSER installed" && break
+    set -e
+    set +x
+    n=$((n+1))
+    sleep 5
+  done
+  if [[ $n -eq $MAX_RETRIES ]]; then
+    red_echo_date "Failed to install ELSER, even after ${MAX_RETRIES} retries"
+    exit 1
+  fi
+  set +x
+}
+
+function setup_index_template() {
+  green_echo_date "Creating an index template to match search-rag-*"
+    curl -XPUT --fail-with-body -u elastic:${ES_LOCAL_PASSWORD} \
+     -H "Content-Type: application/json" \
+     "${ES_LOCAL_URL}/_index_template/ragoldberg-v1" \
+      -d "@${ROOT_DIR}/resources/search-rag-index-template.json"
+    green_echo_date "index template installed"
+    curl -XPUT -u elastic:${ES_LOCAL_PASSWORD} \
+         "${ES_LOCAL_URL}/search-rag-test"
 }
 
 function install_crawler() {
   green_echo_date "fetching crawler image..."
   docker pull docker.elastic.co/integrations/crawler:${CRAWLER_VERSION}
-  mkdir -p "${ROOT_DIR}crawler"
+  CRAWLER_DIR="${ROOT_DIR}crawler"
+  mkdir -p $CRAWLER_DIR
+  CRAWLER_ES_CONFIG="${CRAWLER_DIR}/elasticsearch.yml"
+  rm -f $CRAWLER_ES_CONFIG
+  echo "
+elasticsearch:
+  host: http://host.docker.internal
+  port: ${ES_LOCAL_PORT}
+  username: elastic
+  password: ${ES_LOCAL_PASSWORD}
+" > $CRAWLER_ES_CONFIG
 }
 
 
@@ -66,5 +106,7 @@ install_brew
 check_docker
 install_stack
 install_elser
+setup_index_template
 install_crawler
 install_streamlit_app
+green_echo_date "Finished installing"

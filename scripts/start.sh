@@ -48,12 +48,18 @@ function start_ollama(){
 }
 
 function start_crawler() {
-    docker run -i -d \
-      --name crawler \
-      docker.elastic.co/integrations/crawler:0.2.0
     CRAWLER_DIR="${ROOT_DIR}crawler"
-    docker logs -f crawler &> "${CRAWLER_DIR}/crawler.log" & DOCKER_LOGS_PID=$!
-    echo ${DOCKER_LOGS_PID} > "${CRAWLER_DIR}/crawler_log.pid"
+    if test -e $CRAWLER_DIR; then
+      green_echo_date "Running crawler"
+      docker run -i -d \
+        --name crawler \
+        docker.elastic.co/integrations/crawler:0.2.0
+      docker logs -f crawler &> "${CRAWLER_DIR}/crawler.log" & DOCKER_LOGS_PID=$!
+      echo ${DOCKER_LOGS_PID} > "${CRAWLER_DIR}/crawler_log.pid"
+      docker cp "${CRAWLER_DIR}/elasticsearch.yml" crawler:app/config/elasticsearch.yml
+    else
+      red_echo_date "Crawler was not properly installed. Run 'make install' first"
+    fi
 }
 
 function run_streamlit_app() {

@@ -41,8 +41,14 @@ function clean_crawler() {
   rm -rf $CRAWLER_DIR
 }
 
+function clean_streamlit() {
+  rm -rf "${ROOT_DIR}streamlit"
+}
+
 clean_crawler
 remove_stack
 remove_ollama
 clean_python_env
+clean_streamlit
+green_echo_date "Finished cleaning up"
 
