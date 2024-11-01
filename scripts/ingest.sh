@@ -22,3 +22,4 @@ function do_crawls() {
 }
 
 do_crawls
+green_echo_date "Finished ingestion!"
