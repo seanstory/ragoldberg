@@ -30,8 +30,9 @@ domains:
 output_sink: elasticsearch
 output_index: search-rag-elastic-docs
 
-max_crawl_depth: 10
-max_indexed_links_count: 100
+max_crawl_depth: 2
+max_indexed_links_count: 10
+sitemap_discovery_disabled: true
 
 
 binary_content_extraction_enabled: false

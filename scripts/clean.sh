@@ -3,10 +3,11 @@
 set -e
 
 SCRIPT_DIR=$(dirname $0)
-ROOT_DIR="${SCRIPT_DIR}/../"
+ROOT_DIR=`realpath "${SCRIPT_DIR}/../"`
+ROOT_DIR="${ROOT_DIR}/"
 source "${SCRIPT_DIR}/functions.sh"
 
-function remove_stack() {
+function remove_start_local_stack() {
   START_LOCAL_DIR="${ROOT_DIR}start-local/"
   NESTED_START_LOCAL_DIR="${START_LOCAL_DIR}elastic-start-local/"
   if test -e ${START_LOCAL_DIR}; then
@@ -17,6 +18,14 @@ function remove_stack() {
     fi
     set -e
     rm -rf $START_LOCAL_DIR
+  fi
+}
+
+function remove_stack() {
+  LOCAL_STACK_DIR="${ROOT_DIR}local-stack"
+  if test -e $LOCAL_STACK_DIR; then
+    green_echo_date "Removing local stack"
+    rm -rf $LOCAL_STACK_DIR
   fi
 }
 

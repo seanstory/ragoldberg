@@ -2,7 +2,8 @@
 set -e
 
 SCRIPT_DIR=$(dirname $0)
-ROOT_DIR="${SCRIPT_DIR}/../"
+ROOT_DIR=`realpath "${SCRIPT_DIR}/../"`
+ROOT_DIR="${ROOT_DIR}/"
 source "${SCRIPT_DIR}/functions.sh"
 export $(cat "${ROOT_DIR}/.env" | xargs)
 
@@ -25,7 +26,7 @@ function check_docker(){
   fi
 }
 
-function install_stack(){
+function install_stack_with_start_local(){
   # start local gets its own dir, because if it errors, it doesn't write error logs to its own dir
   START_LOCAL_DIR="${ROOT_DIR}start-local"
   if test -e $START_LOCAL_DIR; then
@@ -40,6 +41,74 @@ function install_stack(){
   export $(cat "${START_LOCAL_DIR}/elastic-start-local/.env" | xargs)
   set -x
   curl -XGET --fail-with-body -u elastic:${ES_LOCAL_PASSWORD} "${ES_LOCAL_URL}"
+}
+
+function install_stack() {
+  LOCAL_STACK_DIR="${ROOT_DIR}local-stack"
+  if test -e $LOCAL_STACK_DIR/elasticsearch-${ELASTIC_VERSION}-${PLATFORM_FLAVOR}; then
+    yellow_echo_date "Elasticsearch is already installed"
+  else
+    mkdir -p $LOCAL_STACK_DIR
+    cd $LOCAL_STACK_DIR
+    green_echo_date "Installing Elasticsearch..."
+    if test -e "elasticsearch-${ELASTIC_VERSION}-${PLATFORM_FLAVOR}.tar.gz"; then
+      green_echo_date "tarball already downloaded, skipping download"
+    else
+      curl -O "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ELASTIC_VERSION}-${PLATFORM_FLAVOR}.tar.gz"
+    fi
+    tar -xzf elasticsearch-*
+    cd elasticsearch-*
+    cp "${ROOT_DIR}config/stack/elasticsearch.yml" config/elasticsearch.yml
+    green_echo_date "Starting Elasticsearch..."
+    bin/elasticsearch &> "../elasticsearch.log" & ELASTICSEARCH_PID=$!
+    green_echo_date "Elasticsearch started with PID: ${ELASTICSEARCH_PID}"
+    echo $ELASTICSEARCH_PID > "../elasticsearch.pid"
+    green_echo_date "Waiting for Elasticsearch to be ready..."
+    sleep 20 # TODO make this better
+    green_echo_date "Setting credentials"
+    bin/elasticsearch-keystore create<<EOF
+N
+EOF
+    bin/elasticsearch-setup-passwords interactive <<EOF
+y
+${ES_LOCAL_PASSWORD}
+${ES_LOCAL_PASSWORD}
+${ES_LOCAL_PASSWORD}
+${ES_LOCAL_PASSWORD}
+${ES_LOCAL_PASSWORD}
+${ES_LOCAL_PASSWORD}
+${ES_LOCAL_PASSWORD}
+${ES_LOCAL_PASSWORD}
+${ES_LOCAL_PASSWORD}
+${ES_LOCAL_PASSWORD}
+${ES_LOCAL_PASSWORD}
+${ES_LOCAL_PASSWORD}
+EOF
+    cd "${ROOT_DIR}"
+    curl -XGET --fail-with-body -u elastic:${ES_LOCAL_PASSWORD} "${ES_LOCAL_URL}"
+    green_echo_date "Elasticsearch is ready"
+  fi
+
+  if test -e $LOCAL_STACK_DIR/kibana-${ELASTIC_VERSION}-${PLATFORM_FLAVOR}; then
+    yellow_echo_date "Kibana is already installed"
+  else
+    mkdir -p $LOCAL_STACK_DIR
+    cd $LOCAL_STACK_DIR
+    green_echo_date "Installing Kibana..."
+    if test -e "kibana-${ELASTIC_VERSION}-${PLATFORM_FLAVOR}.tar.gz"; then
+      green_echo_date "tarball already downloaded, skipping download"
+    else
+      curl -O "https://artifacts.elastic.co/downloads/kibana/kibana-${ELASTIC_VERSION}-${PLATFORM_FLAVOR}.tar.gz"
+    fi
+    tar -xzf kibana-*
+    cd kibana-*
+    cp "${ROOT_DIR}config/stack/kibana.yml" config/kibana.yml
+    green_echo_date "Starting Kibana"
+    bin/kibana &> "../kibana.log" & KIBANA_PID=$!
+    green_echo_date "Kibana started with PID: ${KIBANA_PID}"
+    echo $KIBANA_PID > "../kibana.pid"
+    cd "${ROOT_DIR}"
+  fi
 }
 
 function install_elser() {
@@ -92,18 +161,6 @@ function install_crawler() {
   docker pull docker.elastic.co/integrations/crawler:${CRAWLER_VERSION}
   CRAWLER_DIR="${ROOT_DIR}crawler"
   mkdir -p $CRAWLER_DIR
-  CRAWLER_ES_CONFIG="${CRAWLER_DIR}/elasticsearch.yml"
-  rm -f $CRAWLER_ES_CONFIG
-  echo "
-elasticsearch:
-  host: http://host.docker.internal
-  port: ${ES_LOCAL_PORT}
-  username: elastic
-  password: ${ES_LOCAL_PASSWORD}
-  pipeline: crawler-pipeline
-  bulk_api:
-    max_items: 1
-" > $CRAWLER_ES_CONFIG
 }
 
 

@@ -39,31 +39,48 @@ def init_chat_model():
 
 # perform a semantic and bm25 keyword search on a specific report
 def kb_search(question):
-    query = {
-        "bool": {
-            "should": [
-                {
-                    "semantic": {
-                        "field": "embeddings",
-                        "query": question
-                    }
-                },
-                {
-                    "match": {
-                        "text": question
-                    }
-                },
-                {
-                    "match": {
-                        "title": question
-                    }
-                }
-            ]
-        }
-    }
-
     field_list = ['title', 'text', '_score']
-    results = es.search(index=kb_alias, query=query, size=100, fields=field_list, min_score=0)
+    body = {
+        "retriever": {
+            "rrf": {
+                "retrievers": [
+                    {
+                        "standard": {
+                            "query": {
+                                "bool": {
+                                    "should": [
+                                        {
+                                            "match": {
+                                                "text": question
+                                            }
+                                        },
+                                        {
+                                            "match": {
+                                                "title": question
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "standard": {
+                            "query": {
+                                "semantic": {
+                                    "field": "embeddings",
+                                    "query": question
+                                }
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "fields": field_list,
+        "size": 10
+    }
+    results = es.search(index=kb_alias, body=body)
     response_data = [{"_score": hit["_score"], **hit["_source"]} for hit in results["hits"]["hits"]]
     documents = []
     # Check if there are hits

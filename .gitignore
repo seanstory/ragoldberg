@@ -1,5 +1,6 @@
 Brewfile.lock.json
 start-local
+local-stack
 ollama
 crawler
 streamlit

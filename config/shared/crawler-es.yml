@@ -1,0 +1,9 @@
+elasticsearch:
+  host: http://host.docker.internal
+  port:
+  username: elastic
+  password: changeme
+  pipeline: crawler-pipeline
+  bulk_api:
+    max_items: 10
+

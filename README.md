@@ -6,7 +6,7 @@ A brittle chaining together of household items to make a RAG app.
 ### Requirements
 - homebrew
 - python 3
-- Docker (running)
+- running Docker
 
 ### Usage
 

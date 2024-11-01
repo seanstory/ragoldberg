@@ -1,7 +1,7 @@
 {
   "service": "elser",
   "service_settings": {
-    "num_allocations": 2,
-    "num_threads": 4
+    "num_allocations": 4,
+    "num_threads": 1
   }
 }

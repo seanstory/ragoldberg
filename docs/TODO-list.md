@@ -1,8 +1,13 @@
 ### TODO list
-- [ ] pipeline definitions?
 - [ ] connector?
 - [ ] vault integration?
 - [ ] add linting
 - [ ] add logging
-- [ ] fix avatar icon
+- [ ] preserve formatting
+- [ ] spinner by avatar while LLM thinks
+
+### Done
+- [ ] pipeline definitions
 - [ ] get search-on-return working
+- [ ] fix avatar icon
+

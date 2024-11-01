@@ -1,2 +1,2 @@
-# all the things
+# add all the things here
 cask "ollama"

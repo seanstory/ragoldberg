@@ -2,7 +2,8 @@
 set -e
 
 SCRIPT_DIR=$(dirname $0)
-ROOT_DIR="${SCRIPT_DIR}/../"
+ROOT_DIR=`realpath "${SCRIPT_DIR}/../"`
+ROOT_DIR="${ROOT_DIR}/"
 source "${SCRIPT_DIR}/functions.sh"
 
 function do_crawls() {
