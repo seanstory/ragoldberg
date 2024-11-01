@@ -1,0 +1,32 @@
+domains:
+  - url: https://www.elastic.co         # The base URL for this domain
+    seed_urls:                         # The entry point(s) for crawl jobs
+      - https://www.elastic.co/search-labs/blog
+
+    crawl_rules:
+      - policy: allow
+        type: begins
+        pattern: "/search-labs/blog"
+      - policy: deny
+        type: regex
+        pattern: ".*"     # deny all as the last result
+
+    extraction_rulesets:
+      - url_filters:
+          - type: begins
+            pattern: /search-labs/blog/
+        rules:
+          - action: extract
+            field_name: content
+            selector: ".article-content"
+            join_as: string
+            source: html
+
+output_sink: elasticsearch
+output_index: search-rag-search-lab-blogs
+
+max_crawl_depth: 3
+max_indexed_links_count: 10
+sitemap_discovery_disabled: true
+binary_content_extraction_enabled: false
+

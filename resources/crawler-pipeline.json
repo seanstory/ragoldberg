@@ -108,9 +108,29 @@
     },
     {
       "rename": {
+        "field": "content",
+        "target_field": "text",
+        "ignore_missing": true,
+        "if": "ctx.content != null"
+      }
+    },
+    {
+      "rename": {
         "field": "body",
         "target_field": "text",
+        "ignore_missing": true,
+        "if": "ctx.text == null "
+      }
+    },
+    {
+      "remove": {
+        "field": "body",
         "ignore_missing": true
+      }
+    },
+    {
+      "script": {
+        "source": "ctx.text = \"Title: \" + ctx.title + \" \\\\n  Content: \" + ctx.text"
       }
     }
   ]

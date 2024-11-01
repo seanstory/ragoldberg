@@ -27,6 +27,17 @@ domains:
         type: regex
         pattern: ".*"     # deny all as the last result
 
+    extraction_rulesets:
+      - url_filters:
+          - type: begins
+            pattern: /guide/en
+        rules:
+          - action: extract
+            field_name: content
+            selector: "#content"
+            join_as: string
+            source: html
+
 output_sink: elasticsearch
 output_index: search-rag-elastic-docs
 
