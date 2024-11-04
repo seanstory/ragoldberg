@@ -1,0 +1,32 @@
+{
+  "description": "For converting github issues to a schema for RAG",
+  "version": 1,
+  "processors": [
+    {
+      "drop": {
+        "if": "ctx.type != \"Issue\"",
+        "ignore_failure": true
+      }
+    },
+    {
+      "grok": {
+        "field": "url",
+        "patterns": [
+          "https://github.com/elastic/%{NOTSPACE:repo}/issues/%{NUMBER:issue_num}"
+        ]
+      }
+    },
+    {
+      "script": {
+        "source": "ctx.title = ctx.title + \" (\"+ ctx.repo +\" #\" + ctx.number + \")\"",
+        "description": "Modify title to have number"
+      }
+    },
+    {
+      "script": {
+        "source": "String tmp = \"Title: \"+ctx.title + \"\\\\n\";\ntmp += ctx.body;\nif (ctx.issue_comments != null && ctx.issue_comments != []){\n  tmp += \"Issue Comments: \\\\n\";\n  for (comment in ctx.issue_comments){\n    tmp += comment[\"author\"][\"login\"] + \":\" + comment[\"body\"] + \"\\\\n\";\n  }\n}\nctx.text = tmp;",
+        "description": "Set text field"
+      }
+    }
+  ]
+}

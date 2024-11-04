@@ -155,7 +155,11 @@ function setup_es_resources() {
     "${ES_LOCAL_URL}/_ingest/pipeline/crawler-pipeline" \
     -d "@${ROOT_DIR}/resources/crawler-pipeline.json"
 
-
+  green_echo_date "creating github connector pipeline"
+  curl -XPUT -u elastic:${ES_LOCAL_PASSWORD} \
+    -H "Content-Type: application/json" \
+    "${ES_LOCAL_URL}/_ingest/pipeline/github-connector-pipeline" \
+    -d "@${ROOT_DIR}/resources/github-connector-pipeline.json"
 }
 
 function install_crawler() {
