@@ -38,8 +38,9 @@ def init_chat_model():
     return llm
 
 # perform a semantic and bm25 keyword search on a specific report
-def kb_search(question):
-    field_list = ['title', 'text', '_score']
+def kb_search(keywords, semantic_description):
+    size = 100
+    field_list = ['title', '_score', 'url', 'text']
     body = {
         "retriever": {
             "rrf": {
@@ -50,13 +51,8 @@ def kb_search(question):
                                 "bool": {
                                     "should": [
                                         {
-                                            "match": {
-                                                "text": question
-                                            }
-                                        },
-                                        {
-                                            "match": {
-                                                "title": question
+                                            "query_string": {
+                                                "query": keywords
                                             }
                                         }
                                     ]
@@ -69,16 +65,17 @@ def kb_search(question):
                             "query": {
                                 "semantic": {
                                     "field": "embeddings",
-                                    "query": question
+                                    "query": semantic_description
                                 }
                             }
                         }
                     }
-                ]
+                ],
+                "rank_window_size": size
             }
         },
         "fields": field_list,
-        "size": 10
+        "size": size
     }
     results = es.search(index=kb_alias, body=body)
     response_data = [{"_score": hit["_score"], **hit["_source"]} for hit in results["hits"]["hits"]]
@@ -100,25 +97,27 @@ def construct_prompt(question, results):
             del record["_score"]
     result = ""
     for item in results:
-        result += f"Title: {item.get('title')} , Text: {item.get('text')}\n"
+        result += f"""
+        =====
+        Title: '{item.get('title')}'
+        URL: '{item.get('url')}'
+        Text: 
+        {item.get('text')}
+        
+        """
 
-    # interact with the LLM
-    # augmented_prompt = f"""Using the context below, answer the query. If the answer isn't present in the context, it's ok to say, "I don't know".
-    # Context: {result}
-    # Query: {question}"""
-    # messages = [
-    #     SystemMessage(
-    #         content="You are a helpful analyst that answers questions based on the context provided. "
-    #                 "When you respond, please cite your source where possible, and always summarise your answers."),
-    #     HumanMessage(content=augmented_prompt)
-    # ]
-    # return messages
     augmented_prompt = f"""
-    You are a helpful analyst that answers questions based on the context provided.
-    When you respond, please cite your source where possible, and always summarise your answers.
-    Using the context below, answer the query. If the answer isn't present in the context, it's ok to say, "I don't know".
-    Context: {result}
-    Query: {question}"""
+    You are a helpful, professional, analyst that answers questions.
+    When you respond, please cite your source where possible.
+    Using the context below, answer the question. If the answer isn't present in the context, it's ok to say, "I don't know".
+    Do not make up answers. 
+    Not all documents in the context are necessarily relevant. Ignore irrelevant pieces of context.
+    -----------------------------------
+    Context Documents:
+    {result}
+    
+    -----------------------------------
+    Question: {question}"""
 
     return augmented_prompt
 
@@ -128,34 +127,35 @@ image = Image.open('images/RAGolberg_banner.png')
 st.image(image)
 st.title("RAGoldberg")
 st.header("Search your internal knowledge")
+keywords = st.text_input("Keywords", placeholder="Used for standard keyword search")
+semantic_description = st.text_input("Description", placeholder="A plain-language description of the document(s) that might have the information you need")
 question = st.text_input("Question", placeholder="What would you like to know?")
 submitted = st.button("search")
 
-if submitted or question:
+if submitted:
     chat_model = init_chat_model()
-    search_results = kb_search(question)
-    df_results = pd.DataFrame(search_results)
+    search_results = kb_search(keywords, semantic_description)
+    df_results = pd.DataFrame(search_results, columns=['title', 'url', '_score'])
     with st.status("Searching the data...") as status:
         status.update(label=f'Retrieved {len(search_results)} results from Elasticsearch', state="running")
+    if search_results and len(search_results) > 0:
+        st.dataframe(df_results)
     with st.chat_message("ai assistant", avatar='https://raw.githubusercontent.com/seanstory/ragoldberg/main/images/RAGoldberg_ico.png'):
         full_response = ""
         message_placeholder = st.empty()
         sent_time = datetime.now(tz=timezone.utc)
         prompt = construct_prompt(question, search_results)
-        # current_chat_message = chat_model(prompt).content
+        status.update(label=f'Waiting for a response from the LLM...', state="running")
         current_chat_message = chat_model(prompt)
         answer_type = 'original'
 
+        status.update(label=f'👀 the assistant is responding...', state="running")
         for chunk in current_chat_message.split():
             full_response += chunk + " "
             time.sleep(0.05)
             # Add a blinking cursor to simulate typing
             message_placeholder.markdown(full_response + "▌")
         message_placeholder.markdown(full_response)
-        # chat_bot.info(current_chat_message)
         received_time = datetime.now(tz=timezone.utc)
         status.update(label="AI response complete!", state="complete")
-    # st.write(construct_prompt(question, results))
     string_prompt = str(prompt)
-    st.dataframe(df_results)
-    question = None # this lets a newly typed/entered question trigger the flow
