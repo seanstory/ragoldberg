@@ -53,10 +53,11 @@ function install_stack() {
     green_echo_date "Installing Elasticsearch..."
     if test -e "elasticsearch-${ELASTIC_VERSION}-${PLATFORM_FLAVOR}.tar.gz"; then
       green_echo_date "tarball already downloaded, skipping download"
+      rm -rf "elasticsearch-${ELASTIC_VERSION}-${PLATFORM_FLAVOR}"
     else
       curl -O "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ELASTIC_VERSION}-${PLATFORM_FLAVOR}.tar.gz"
     fi
-    tar -xzf elasticsearch-*
+    tar -xzf elasticsearch-*.tar.gz
     cd elasticsearch-*
     cp "${ROOT_DIR}config/stack/elasticsearch.yml" config/elasticsearch.yml
     green_echo_date "Starting Elasticsearch..."
@@ -97,10 +98,11 @@ EOF
     green_echo_date "Installing Kibana..."
     if test -e "kibana-${ELASTIC_VERSION}-${PLATFORM_FLAVOR}.tar.gz"; then
       green_echo_date "tarball already downloaded, skipping download"
+      rm -rf "kibana-${ELASTIC_VERSION}"
     else
       curl -O "https://artifacts.elastic.co/downloads/kibana/kibana-${ELASTIC_VERSION}-${PLATFORM_FLAVOR}.tar.gz"
     fi
-    tar -xzf kibana-*
+    tar -xzf kibana-*.tar.gz
     cd kibana-*
     cp "${ROOT_DIR}config/stack/kibana.yml" config/kibana.yml
     green_echo_date "Starting Kibana"
