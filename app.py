@@ -39,6 +39,7 @@ def init_chat_model():
 
 # perform a semantic and bm25 keyword search on a specific report
 def kb_search(keywords, semantic_description):
+    min_score = 0.03
     size = 100
     field_list = ['title', '_score', 'url', 'text']
     body = {
@@ -86,8 +87,9 @@ def kb_search(keywords, semantic_description):
         # Check if there are any hits with a value greater than 0
         if isinstance(total_hits, dict) and "value" in total_hits and total_hits["value"] > 0:
             for hit in response_data:
-                doc_data = {field: hit[field] for field in field_list if field in hit}
-                documents.append(doc_data)
+                if hit["_score"] > min_score:
+                    doc_data = {field: hit[field] for field in field_list if field in hit}
+                    documents.append(doc_data)
     return documents
 
 
@@ -95,29 +97,40 @@ def construct_prompt(question, results):
     for record in results:
         if "_score" in record:
             del record["_score"]
-    result = ""
-    for item in results:
-        result += f"""
-        =====
-        Title: '{item.get('title')}'
-        URL: '{item.get('url')}'
-        Text: 
-        {item.get('text')}
-        
-        """
+    if (len(results) > 0):
+        result = ""
+        for item in results:
+            result += f"""
+            =====
+            Title: '{item.get('title')}'
+            URL: '{item.get('url')}'
+            Text: 
+            {item.get('text')}
+            
+            """
 
-    augmented_prompt = f"""
-    You are a helpful, professional, analyst that answers questions.
-    When you respond, please cite your source where possible.
-    Using the context below, answer the question. If the answer isn't present in the context, it's ok to say, "I don't know".
-    Do not make up answers. 
-    Not all documents in the context are necessarily relevant. Ignore irrelevant pieces of context.
-    -----------------------------------
-    Context Documents:
-    {result}
-    
-    -----------------------------------
-    Question: {question}"""
+        augmented_prompt = f"""
+        You are a helpful, professional, analyst that answers questions.
+        When you respond, please cite your source where possible.
+        Using the context below, answer the question. If the answer isn't present in the context, it's ok to say, "I don't know".
+        Do not make up answers. 
+        Not all documents in the context are necessarily relevant. Ignore irrelevant pieces of context.
+        -----------------------------------
+        Context Documents:
+        {result}
+        
+        -----------------------------------
+        Question: {question}"""
+    else:
+        augmented_prompt = f"""
+        You are a helpful, professional, analyst that answers questions.
+        When you respond, please cite your source where possible.
+        Do not make up answers. 
+        
+        This is my question for you:
+        --------------------
+        {question}
+        """
 
     return augmented_prompt
 
@@ -134,7 +147,7 @@ submitted = st.button("search")
 
 if submitted:
     chat_model = init_chat_model()
-    search_results = kb_search(keywords, semantic_description)
+    search_results = kb_search(keywords, semantic_description) if keywords and semantic_description else []
     df_results = pd.DataFrame(search_results, columns=['title', 'url', '_score'])
     with st.status("Searching the data...") as status:
         status.update(label=f'Retrieved {len(search_results)} results from Elasticsearch', state="running")
