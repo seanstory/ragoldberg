@@ -39,7 +39,7 @@ def init_chat_model():
 
 # perform a semantic and bm25 keyword search on a specific report
 def kb_search(keywords, semantic_description):
-    min_score = 0.03
+    min_score = 0.00
     size = 100
     field_list = ['title', '_score', 'url', 'text']
     body = {
