@@ -45,7 +45,7 @@ function install_stack_with_start_local(){
 
 function install_stack() {
   LOCAL_STACK_DIR="${ROOT_DIR}local-stack"
-  if test -e $LOCAL_STACK_DIR/elasticsearch-${ELASTIC_VERSION}-${PLATFORM_FLAVOR}; then
+  if test -e $LOCAL_STACK_DIR/elasticsearch-${ELASTIC_VERSION}; then
     yellow_echo_date "Elasticsearch is already installed"
   else
     mkdir -p $LOCAL_STACK_DIR
@@ -60,6 +60,11 @@ function install_stack() {
     tar -xzf elasticsearch-*.tar.gz
     cd elasticsearch-*
     cp "${ROOT_DIR}config/stack/elasticsearch.yml" config/elasticsearch.yml
+  fi
+
+  if test -e "$LOCAL_STACK_DIR/elasticsearch.pid"; then
+    green_echo_date "ES already running"
+  else
     green_echo_date "Starting Elasticsearch..."
     bin/elasticsearch &> "../elasticsearch.log" & ELASTICSEARCH_PID=$!
     green_echo_date "Elasticsearch started with PID: ${ELASTICSEARCH_PID}"
@@ -90,7 +95,7 @@ EOF
     green_echo_date "Elasticsearch is ready"
   fi
 
-  if test -e $LOCAL_STACK_DIR/kibana-${ELASTIC_VERSION}-${PLATFORM_FLAVOR}; then
+  if test -e $LOCAL_STACK_DIR/kibana-${ELASTIC_VERSION}; then
     yellow_echo_date "Kibana is already installed"
   else
     mkdir -p $LOCAL_STACK_DIR
@@ -105,7 +110,13 @@ EOF
     tar -xzf kibana-*.tar.gz
     cd kibana-*
     cp "${ROOT_DIR}config/stack/kibana.yml" config/kibana.yml
+  fi
+
+  if test -e "$LOCAL_STACK_DIR/kibana.pid"; then
+    green_echo_date "Kibana already running"
+  else
     green_echo_date "Starting Kibana"
+    cd $LOCAL_STACK_DIR/kibana-*
     bin/kibana &> "../kibana.log" & KIBANA_PID=$!
     green_echo_date "Kibana started with PID: ${KIBANA_PID}"
     echo $KIBANA_PID > "../kibana.pid"
@@ -114,27 +125,36 @@ EOF
 }
 
 function install_elser() {
-  green_echo_date "installing ELSER..."
-  MAX_RETRIES=3
-  n=0
-  until [ "$n" -ge $MAX_RETRIES ]
-  do
-    set -x
-    set +e
-    curl -XPUT --fail-with-body -u elastic:${ES_LOCAL_PASSWORD} \
-      -H "Content-Type: application/json" \
-      "${ES_LOCAL_URL}/_inference/sparse_embedding/elser-endpoint" \
-       -d "@${ROOT_DIR}/resources/elser_endpoint.json" && green_echo_date "ELSER installed" && break
-    set -e
+  set +e
+  curl -XGET --fail-with-body -u elastic:${ES_LOCAL_PASSWORD} \
+    "${ES_LOCAL_URL}/_inference/sparse_embedding/elser-endpoint"
+  ELSER_INSTALLED=$?
+  set -e
+  if [[ $ELSER_INSTALLED -eq "0" ]]; then
+    green_echo_date "ELSER already installed"
+  else
+    green_echo_date "installing ELSER..."
+    MAX_RETRIES=3
+    n=0
+    until [ "$n" -ge $MAX_RETRIES ]
+    do
+      set -x
+      set +e
+      curl -XPUT --fail-with-body -u elastic:${ES_LOCAL_PASSWORD} \
+        -H "Content-Type: application/json" \
+        "${ES_LOCAL_URL}/_inference/sparse_embedding/elser-endpoint" \
+         -d "@${ROOT_DIR}/resources/elser_endpoint.json" && green_echo_date "ELSER installed" && break
+      set -e
+      set +x
+      n=$((n+1))
+      sleep 5
+    done
+    if [[ $n -eq $MAX_RETRIES ]]; then
+      red_echo_date "Failed to install ELSER, even after ${MAX_RETRIES} retries"
+      exit 1
+    fi
     set +x
-    n=$((n+1))
-    sleep 5
-  done
-  if [[ $n -eq $MAX_RETRIES ]]; then
-    red_echo_date "Failed to install ELSER, even after ${MAX_RETRIES} retries"
-    exit 1
   fi
-  set +x
 }
 
 function setup_es_resources() {

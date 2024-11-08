@@ -63,9 +63,13 @@ function start_ollama(){
   fi
   OLLAMA_DIR="${ROOT_DIR}ollama"
   mkdir -p $OLLAMA_DIR
-  ollama -v | grep "could not connect to a running Ollama instance"
+  set +e
+  OLLAMA_VERSION=`ollama -v`
   OLLAMA_RUNNING=$?
-  if [ ${OLLAMA_RUNNING} -ne "0" ]; then
+  echo $OLLAMA_VERSION | grep "could not connect to a running Ollama instance"
+  OLLAMA_NOT_CONNECTED=$?
+  set -e
+  if [ ${OLLAMA_NOT_CONNECTED} -ne "0" ] && [ ${OLLAMA_RUNNING} -eq "0" ]; then
     yellow_echo_date "ollama already running"
   else
     ollama serve &> "${OLLAMA_DIR}/serve.log" & OLLAMA_SERVE_PID=$!
@@ -84,13 +88,17 @@ function start_crawler() {
     CRAWLER_DIR="${ROOT_DIR}crawler"
 
     if test -e $CRAWLER_DIR; then
-      green_echo_date "Running crawler"
-      docker run -i -d \
-        --name crawler \
-        docker.elastic.co/integrations/crawler:0.2.0
-      docker logs -f crawler &> "${CRAWLER_DIR}/crawler.log" & DOCKER_LOGS_PID=$!
-      echo ${DOCKER_LOGS_PID} > "${CRAWLER_DIR}/crawler_log.pid"
-      docker cp "${ROOT_DIR}config/shared/crawler-es.yml" crawler:app/config/elasticsearch.yml
+      if test -e $CRAWLER_DIR/crawler_log.pid; then
+        green_echo_date "Crawler already running"
+      else
+        green_echo_date "Running crawler"
+        docker run -i -d \
+          --name crawler \
+          docker.elastic.co/integrations/crawler:0.2.0
+        docker logs -f crawler &> "${CRAWLER_DIR}/crawler.log" & DOCKER_LOGS_PID=$!
+        echo ${DOCKER_LOGS_PID} > "${CRAWLER_DIR}/crawler_log.pid"
+        docker cp "${ROOT_DIR}config/shared/crawler-es.yml" crawler:app/config/elasticsearch.yml
+      fi
     else
       red_echo_date "Crawler was not properly installed. Run 'make install' first"
     fi
