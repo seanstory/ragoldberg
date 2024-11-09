@@ -15,7 +15,8 @@
             "keyword": {
               "type": "keyword"
             }
-          }
+          },
+          "copy_to": "embeddings"
         },
         "text": {
           "type": "text",

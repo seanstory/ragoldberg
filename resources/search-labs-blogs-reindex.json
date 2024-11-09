@@ -1,0 +1,10 @@
+{
+  "source": {
+    "index": "raw-search-rag-search-lab-blogs",
+    "size": 10
+  },
+  "dest": {
+    "pipeline": "crawler-pipeline",
+    "index": "search-rag-search-lab-blogs"
+  }
+}

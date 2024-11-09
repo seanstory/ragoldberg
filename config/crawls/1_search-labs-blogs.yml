@@ -23,7 +23,7 @@ domains:
             source: html
 
 output_sink: elasticsearch
-output_index: search-rag-search-lab-blogs
+output_index: raw-search-rag-search-lab-blogs
 
 max_crawl_depth: 3
 max_indexed_links_count: 10

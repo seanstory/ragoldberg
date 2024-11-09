@@ -39,7 +39,7 @@ domains:
             source: html
 
 output_sink: elasticsearch
-output_index: search-rag-elastic-docs
+output_index: raw-search-rag-elastic-docs
 
 max_crawl_depth: 2
 max_indexed_links_count: 10

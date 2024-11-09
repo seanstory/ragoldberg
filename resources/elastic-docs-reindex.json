@@ -1,0 +1,10 @@
+{
+  "source": {
+    "index": "raw-search-rag-elastic-docs",
+    "size": 10
+  },
+  "dest": {
+    "pipeline": "crawler-pipeline",
+    "index": "search-rag-elastic-docs"
+  }
+}

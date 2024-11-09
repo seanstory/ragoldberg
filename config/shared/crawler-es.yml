@@ -3,7 +3,6 @@ elasticsearch:
   port: 9200
   username: elastic
   password: changeme
-  pipeline: crawler-pipeline
   bulk_api:
-    max_items: 5
+    max_items: 10
 

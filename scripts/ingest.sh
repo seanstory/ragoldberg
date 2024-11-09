@@ -5,6 +5,7 @@ SCRIPT_DIR=$(dirname $0)
 ROOT_DIR=`realpath "${SCRIPT_DIR}/../"`
 ROOT_DIR="${ROOT_DIR}/"
 source "${SCRIPT_DIR}/functions.sh"
+export $(cat "${ROOT_DIR}/.env" | xargs)
 
 function do_crawls() {
   CRAWLER_DIR="${ROOT_DIR}crawler"
@@ -21,5 +22,23 @@ function do_crawls() {
   fi
 }
 
+function do_reindex_in_place() {
+  green_echo_date "Kicking off Elastic docs data reindex:"
+  curl -XPOST --fail-with-body -u elastic:${ES_LOCAL_PASSWORD} \
+    -H "Content-Type: application/json" \
+    "${ES_LOCAL_URL}/_reindex?wait_for_completion=false&requests_per_second=1" \
+    -d "@${ROOT_DIR}/resources/elastic-docs-reindex.json"
+  echo
+
+  green_echo_date "Kicking off Search Labs blogs data reindex:"
+
+  curl -XPOST --fail-with-body -u elastic:${ES_LOCAL_PASSWORD} \
+    -H "Content-Type: application/json" \
+    "${ES_LOCAL_URL}/_reindex?wait_for_completion=false&requests_per_second=1" \
+    -d "@${ROOT_DIR}/resources/search-labs-blogs-reindex.json"
+  echo
+}
+
 do_crawls
+do_reindex_in_place
 green_echo_date "Finished ingestion!"
