@@ -109,7 +109,9 @@ function run_streamlit_app() {
   mkdir -p $STREAMLIT_DIR
   .venv/bin/streamlit run app.py &> "${STREAMLIT_DIR}/serve.log" & STREAMLIT_SERVE_PID=$!
   echo ${STREAMLIT_SERVE_PID} > "$STREAMLIT_DIR/app.pid"
-  green_echo_date "RAGolberg is running! Open http://localhost:8502"
+  green_echo_date "RAGolberg is running!"
+  sleep 2
+  head -n 5 ${STREAMLIT_DIR}/serve.log
 }
 
 start_stack
