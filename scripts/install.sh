@@ -65,6 +65,7 @@ function install_stack() {
   if test -e "$LOCAL_STACK_DIR/elasticsearch.pid"; then
     green_echo_date "ES already running"
   else
+    cd $LOCAL_STACK_DIR/elasticsearch-*
     green_echo_date "Starting Elasticsearch..."
     bin/elasticsearch &> "../elasticsearch.log" & ELASTICSEARCH_PID=$!
     green_echo_date "Elasticsearch started with PID: ${ELASTICSEARCH_PID}"
@@ -72,6 +73,7 @@ function install_stack() {
     green_echo_date "Waiting for Elasticsearch to be ready..."
     sleep 20 # TODO make this better
     green_echo_date "Setting credentials"
+    set +e
     bin/elasticsearch-keystore create<<EOF
 N
 EOF
@@ -90,6 +92,7 @@ ${ES_LOCAL_PASSWORD}
 ${ES_LOCAL_PASSWORD}
 ${ES_LOCAL_PASSWORD}
 EOF
+    set -e
     cd "${ROOT_DIR}"
     curl -XGET --fail-with-body -u elastic:${ES_LOCAL_PASSWORD} "${ES_LOCAL_URL}"
     green_echo_date "Elasticsearch is ready"
